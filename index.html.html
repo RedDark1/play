@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#080b12" />
+  <title>Neon Vector — Арена-шутер</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    body {
+      background: #080b12;
+      color: #eef2f6;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    /* HUD */
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-box {
+      background: rgba(14, 19, 30, 0.78);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bar-wrap {
+      width: 150px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      transition: width 0.15s ease;
+    }
+
+    #hp-bar { background: linear-gradient(90deg, #fb7185, #f43f5e); width: 100%; }
+    #dash-bar { background: linear-gradient(90deg, #38bdf8, #818cf8); width: 100%; }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .stat-val {
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Экраны меню и апгрейдов */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 11, 18, 0.85);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 20;
+      text-align: center;
+    }
+
+    .hidden { display: none !important; }
+
+    h1 {
+      font-size: clamp(32px, 6vw, 52px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #38bdf8, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 15px;
+      max-width: 440px;
+      line-height: 1.5;
+      margin-bottom: 26px;
+    }
+
+    .btn {
+      background: #38bdf8;
+      color: #06101c;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 32px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.35);
+    }
+
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: scale(0.96); }
+
+    .upgrades-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      width: 100%;
+      max-width: 640px;
+      margin-top: 10px;
+    }
+
+    .upg-card {
+      background: #131926;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 18px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .upg-card:hover {
+      border-color: #38bdf8;
+      background: #182132;
+      transform: translateY(-3px);
+    }
+
+    .upg-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .upg-desc {
+      font-size: 12.5px;
+      color: #94a3b8;
+    }
+
+    /* Сенсорное управление для телефона */
+    #touch-controls {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .stick-zone {
+      position: absolute;
+      bottom: 28px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1.5px solid rgba(255, 255, 255, 0.12);
+      pointer-events: auto;
+    }
+
+    #stick-move { left: 28px; }
+    #stick-aim { right: 28px; }
+
+    .stick-knob {
+      position: absolute;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.45);
+      border: 2px solid #38bdf8;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    #touch-dash {
+      position: absolute;
+      bottom: 165px;
+      right: 44px;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: rgba(129, 140, 248, 0.25);
+      border: 1.5px solid #818cf8;
+      color: #eef2f6;
+      font-size: 11px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      pointer-events: auto;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      #touch-controls { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="hud-box">
+      <div class="stat-row"><span>БРОНЯ</span><span class="stat-val" id="hp-text">100 / 100</span></div>
+      <div class="bar-wrap"><div class="bar-fill" id="hp-bar"></div></div>
+      <div class="stat-row" style="margin-top: 2px;"><span>РЫВОК (Пробел)</span><span class="stat-val" id="dash-text">ГОТОВ</span></div>
+      <div class="bar-wrap"><div class="bar-fill" id="dash-bar"></div></div>
+    </div>
+
+    <div class="hud-box" style="text-align: right;">
+      <div class="stat-row" style="gap: 14px;"><span>ВОЛНА</span><span class="stat-val" id="wave-text">1</span></div>
+      <div class="stat-row" style="gap: 14px;"><span>СЧЁТ</span><span class="stat-val" id="score-text">0</span></div>
+      <div class="stat-row" style="gap: 14px;"><span>РЕКОРД</span><span class="stat-val" id="best-text">0</span></div>
+    </div>
+  </div>
+
+  <!-- Стартовый экран -->
+  <div class="overlay" id="start-screen">
+    <h1>NEON VECTOR</h1>
+    <p class="subtitle">
+      Удерживай арену против волн дронов.<br>
+      <b>ПК:</b> WASD — движение, Мышь — огонь, Пробел / ПКМ — рывок.<br>
+      <b>Телефон:</b> левый стик — шаг, правый — прицел и огонь.
+    </p>
+    <button class="btn" onclick="startGame()">В БОЙ</button>
+  </div>
+
+  <!-- Экран улучшений между волнами -->
+  <div class="overlay hidden" id="upgrade-screen">
+    <h1 style="font-size: 32px;">ВОЛНА ЗАЧИЩЕНА</h1>
+    <p class="subtitle" style="margin-bottom: 16px;">Выбери модификацию модуля перед следующей волной:</p>
+    <div class="upgrades-grid" id="upgrades-list"></div>
+  </div>
+
+  <!-- Экран поражения -->
+  <div class="overlay hidden" id="gameover-screen">
+    <h1 style="background: linear-gradient(135deg, #fb7185, #fbbf24); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">СИСТЕМА РАЗРУШЕНА</h1>
+    <p class="subtitle" id="final-stats">Ты продержался до 1 волны и набрал 0 очков.</p>
+    <button class="btn" onclick="startGame()">ИГРАТЬ СНОВА</button>
+  </div>
+
+  <!-- Мобильные стики -->
+  <div id="touch-controls">
+    <div class="stick-zone" id="stick-move"><div class="stick-knob" id="knob-move"></div></div>
+    <div class="stick-zone" id="stick-aim"><div class="stick-knob" id="knob-aim"></div></div>
+    <div id="touch-dash">РЫВОК</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    let W = canvas.width = window.innerWidth;
+    let H = canvas.height = window.innerHeight;
+    window.addEventListener('resize', () => {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    });
+
+    // Процедурный звук через Web Audio API
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function playSound(type) {
+      try {
+        if (!audioCtx) audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'shoot') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(110, now + 0.08);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } else if (type === 'hit') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(180, now);
+          osc.frequency.exponentialRampToValueAtTime(55, now + 0.12);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        } else if (type === 'dash') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(240, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.14);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.start(now);
+          osc.stop(now + 0.14);
+        } else if (type === 'hurt') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(130, now);
+          osc.frequency.linearRampToValueAtTime(45, now + 0.22);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        }
+      } catch (e) {}
+    }
+
+    // Состояние игры
+    let state = 'MENU';
+    let score = 0;
+    let bestScore = Number(localStorage.getItem('neon_vector_best') || 0);
+    document.getElementById('best-text').textContent = bestScore;
+
+    let wave = 1;
+    let enemiesToSpawn = 0;
+    let spawnTimer = 0;
+    let shake = 0;
+
+    const player = {
+      x: W / 2, y: H / 2, r: 16,
+      vx: 0, vy: 0,
+      speed: 290,
+      hp: 100, maxHp: 100,
+      angle: 0,
+      fireRate: 0.17,
+      fireTimer: 0,
+      bulletSpeed: 760,
+      damage: 25,
+      multishot: 1,
+      dashCooldown: 1.6,
+      dashTimer: 0,
+      invuln: 0
+    };
+
+    let bullets = [];
+    let enemyBullets = [];
+    let enemies = [];
+    let particles = [];
+
+    // Ввод ПК
+    const keys = {};
+    const mouse = { x: W / 2, y: H / 2, down: false };
+
+    window.addEventListener('keydown', e => {
+      keys[e.code] = true;
+      if (e.code === 'Space' && state === 'PLAY') triggerDash();
+    });
+    window.addEventListener('keyup', e => keys[e.code] = false);
+    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    window.addEventListener('mousedown', e => {
+      if (e.button === 0) mouse.down = true;
+      if (e.button === 2 && state === 'PLAY') triggerDash();
+    });
+    window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
+    window.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Ввод Сенсорные стики
+    const touchMove = { active: false, dx: 0, dy: 0 };
+    const touchAim = { active: false, dx: 0, dy: 0 };
+
+    function setupStick(zoneId, knobId, target) {
+      const zone = document.getElementById(zoneId);
+      const knob = document.getElementById(knobId);
+      let touchId = null;
+
+      zone.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const t = e.changedTouches[0];
+        touchId = t.identifier;
+        target.active = true;
+        updateKnob(t);
+      });
+
+      zone.addEventListener('touchmove', e => {
+        e.preventDefault();
+        for (const t of e.changedTouches) {
+          if (t.identifier === touchId) updateKnob(t);
+        }
+      });
+
+      const endTouch = e => {
+        for (const t of e.changedTouches) {
+          if (t.identifier === touchId) {
+            touchId = null;
+            target.active = false;
+            target.dx = 0;
+            target.dy = 0;
+            knob.style.transform = 'translate(-50%, -50%)';
+          }
+        }
+      };
+      zone.addEventListener('touchend', endTouch);
+      zone.addEventListener('touchcancel', endTouch);
+
+      function updateKnob(t) {
+        const rect = zone.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const maxR = rect.width / 2 - 14;
+        let dx = t.clientX - cx;
+        let dy = t.clientY - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxR) {
+          dx = (dx / dist) * maxR;
+          dy = (dy / dist) * maxR;
+        }
+        knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        target.dx = dx / maxR;
+        target.dy = dy / maxR;
+      }
+    }
+
+    setupStick('stick-move', 'knob-move', touchMove);
+    setupStick('stick-aim', 'knob-aim', touchAim);
+    document.getElementById('touch-dash').addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (state === 'PLAY') triggerDash();
+    });
+
+    function triggerDash() {
+      if (player.dashTimer > 0) return;
+      player.dashTimer = player.dashCooldown;
+      player.invuln = 0.28;
+      const dashDist = 145;
+      let dirX = Math.cos(player.angle);
+      let dirY = Math.sin(player.angle);
+
+      const moveX = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0) + touchMove.dx;
+      const moveY = (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0) - (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) + touchMove.dy;
+      if (Math.hypot(moveX, moveY) > 0.1) {
+        const len = Math.hypot(moveX, moveY);
+        dirX = moveX / len;
+        dirY = moveY / len;
+      }
+
+      spawnParticles(player.x, player.y, '#818cf8', 14);
+      player.x = Math.max(player.r, Math.min(W - player.r, player.x + dirX * dashDist));
+      player.y = Math.max(player.r, Math.min(H - player.r, player.y + dirY * dashDist));
+      spawnParticles(player.x, player.y, '#38bdf8', 14);
+      playSound('dash');
+      shake = 5;
+    }
+
+    function spawnParticles(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 240;
+        particles.push({
+          x, y,
+          vx: Math.cos(a) * spd,
+          vy: Math.sin(a) * spd,
+          life: 0.25 + Math.random() * 0.3,
+          maxLife: 0.55,
+          color,
+          size: 2 + Math.random() * 3
+        });
+      }
+    }
+
+    function startWave(w) {
+      wave = w;
+      enemiesToSpawn = 5 + w * 3;
+      spawnTimer = 0.4;
+      document.getElementById('wave-text').textContent = wave;
+    }
+
+    function spawnEnemy() {
+      const side = Math.floor(Math.random() * 4);
+      let x, y;
+      if (side === 0) { x = Math.random() * W; y = -30; }
+      else if (side === 1) { x = W + 30; y = Math.random() * H; }
+      else if (side === 2) { x = Math.random() * W; y = H + 30; }
+      else { x = -30; y = Math.random() * H; }
+
+      const roll = Math.random();
+      if (wave >= 3 && roll < 0.22) {
+        // Танк
+        enemies.push({ x, y, r: 24, hp: 95 + wave * 15, maxHp: 95 + wave * 15, speed: 85, color: '#fbbf24', type: 'tank', shootCd: 0 });
+      } else if (wave >= 2 && roll < 0.48) {
+        // Стрелок
+        enemies.push({ x, y, r: 16, hp: 45 + wave * 6, maxHp: 45 + wave * 6, speed: 125, color: '#c084fc', type: 'shooter', shootCd: 1.5 });
+      } else {
+        // Быстрый перехватчик
+        enemies.push({ x, y, r: 14, hp: 30 + wave * 5, maxHp: 30 + wave * 5, speed: 165 + Math.min(90, wave * 6), color: '#fb7185', type: 'rusher', shootCd: 0 });
+      }
+    }
+
+    const UPGRADES = [
+      { title: 'Сдвоенный ствол', desc: '+1 дополнительный снаряд при каждом выстреле', apply: () => player.multishot++ },
+      { title: 'Разгон затвора', desc: 'Скорострельность выше на 22%', apply: () => player.fireRate *= 0.78 },
+      { title: 'Бронебойные заряды', desc: 'Урон пуль увеличен на +12 ед.', apply: () => player.damage += 12 },
+      { title: 'Форсаж приводов', desc: 'Скорость движения +15% и быстрый рывок', apply: () => { player.speed *= 1.15; player.dashCooldown *= 0.82; } },
+      { title: 'Ремкомплект корпуса', desc: '+30 к макс. броне и полное восстановление', apply: () => { player.maxHp += 30; player.hp = player.maxHp; } }
+    ];
+
+    function showUpgrades() {
+      state = 'UPGRADE';
+      const list = document.getElementById('upgrades-list');
+      const pool = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3);
+      list.innerHTML = '';
+      pool.forEach(u => {
+        const card = document.createElement('div');
+        card.className = 'upg-card';
+        card.innerHTML = `<div class="upg-title">${u.title}</div><div class="upg-desc">${u.desc}</div>`;
+        card.onclick = () => {
+          u.apply();
+          document.getElementById('upgrade-screen').classList.add('hidden');
+          state = 'PLAY';
+          startWave(wave + 1);
+        };
+        list.appendChild(card);
+      });
+      document.getElementById('upgrade-screen').classList.remove('hidden');
+    }
+
+    function startGame() {
+      score = 0;
+      player.x = W / 2;
+      player.y = H / 2;
+      player.hp = 100;
+      player.maxHp = 100;
+      player.speed = 290;
+      player.fireRate = 0.17;
+      player.damage = 25;
+      player.multishot = 1;
+      player.dashCooldown = 1.6;
+      player.dashTimer = 0;
+      player.invuln = 0;
+
+      bullets = [];
+      enemyBullets = [];
+      enemies = [];
+      particles = [];
+
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('gameover-screen').classList.add('hidden');
+      document.getElementById('upgrade-screen').classList.add('hidden');
+
+      state = 'PLAY';
+      startWave(1);
+    }
+
+    function updateHUD() {
+      document.getElementById('hp-text').textContent = `${Math.max(0, Math.ceil(player.hp))} / ${player.maxHp}`;
+      document.getElementById('hp-bar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+
+      const dashReady = player.dashTimer <= 0;
+      document.getElementById('dash-text').textContent = dashReady ? 'ГОТОВ' : `${player.dashTimer.toFixed(1)}с`;
+      document.getElementById('dash-bar').style.width = `${dashReady ? 100 : (1 - player.dashTimer / player.dashCooldown) * 100}%`;
+
+      document.getElementById('score-text').textContent = score;
+      if (score > bestScore) {
+        bestScore = score;
+        localStorage.setItem('neon_vector_best', bestScore);
+        document.getElementById('best-text').textContent = bestScore;
+      }
+    }
+
+    let lastTime = performance.now();
+
+    function loop(now) {
+      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      if (state === 'PLAY') {
+        update(dt);
+      }
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function update(dt) {
+      if (player.dashTimer > 0) player.dashTimer -= dt;
+      if (player.invuln > 0) player.invuln -= dt;
+      if (player.fireTimer > 0) player.fireTimer -= dt;
+      if (shake > 0) shake = Math.max(0, shake - dt * 28);
+
+      // Движение игрока
+      let mx = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0) + touchMove.dx;
+      let my = (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0) - (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) + touchMove.dy;
+      const mLen = Math.hypot(mx, my);
+      if (mLen > 1) { mx /= mLen; my /= mLen; }
+
+      player.x = Math.max(player.r, Math.min(W - player.r, player.x + mx * player.speed * dt));
+      player.y = Math.max(player.r, Math.min(H - player.r, player.y + my * player.speed * dt));
+
+      // Прицел
+      if (touchAim.active && Math.hypot(touchAim.dx, touchAim.dy) > 0.15) {
+        player.angle = Math.atan2(touchAim.dy, touchAim.dx);
+      } else if (!touchAim.active) {
+        player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+      }
+
+      // Стрельба
+      const isFiring = mouse.down || (touchAim.active && Math.hypot(touchAim.dx, touchAim.dy) > 0.25);
+      if (isFiring && player.fireTimer <= 0) {
+        player.fireTimer = player.fireRate;
+        const spread = 0.11;
+        for (let i = 0; i < player.multishot; i++) {
+          const offset = (i - (player.multishot - 1) / 2) * spread;
+          const a = player.angle + offset;
+          bullets.push({
+            x: player.x + Math.cos(a) * 20,
+            y: player.y + Math.sin(a) * 20,
+            vx: Math.cos(a) * player.bulletSpeed,
+            vy: Math.sin(a) * player.bulletSpeed,
+            r: 4
+          });
+        }
+        // Лёгкая отдача
+        player.x -= Math.cos(player.angle) * 2.5;
+        player.y -= Math.sin(player.angle) * 2.5;
+        playSound('shoot');
+      }
+
+      // Спавн волн
+      if (enemiesToSpawn > 0) {
+        spawnTimer -= dt;
+        if (spawnTimer <= 0) {
+          spawnEnemy();
+          enemiesToSpawn--;
+          spawnTimer = Math.max(0.28, 1.05 - wave * 0.06);
+        }
+      } else if (enemies.length === 0) {
+        showUpgrades();
+      }
+
+      // Пули игрока
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        if (b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) {
+          bullets.splice(i, 1);
+          continue;
+        }
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (Math.hypot(b.x - e.x, b.y - e.y) < b.r + e.r) {
+            e.hp -= player.damage;
+            spawnParticles(b.x, b.y, e.color, 5);
+            bullets.splice(i, 1);
+            if (e.hp <= 0) {
+              score += e.type === 'tank' ? 40 : e.type === 'shooter' ? 25 : 15;
+              spawnParticles(e.x, e.y, e.color, 18);
+              shake = Math.max(shake, e.type === 'tank' ? 9 : 4);
+              playSound('hit');
+              enemies.splice(j, 1);
+            }
+            break;
+          }
+        }
+      }
+
+      // Враги
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        const a = Math.atan2(player.y - e.y, player.x - e.x);
+        const dist = Math.hypot(player.x - e.x, player.y - e.y);
+
+        if (e.type === 'shooter' && dist < 260) {
+          e.shootCd -= dt;
+          if (e.shootCd <= 0) {
+            e.shootCd = 2.1;
+            enemyBullets.push({
+              x: e.x, y: e.y,
+              vx: Math.cos(a) * 310,
+              vy: Math.sin(a) * 310,
+              r: 5
+            });
+          }
+        } else {
+          e.x += Math.cos(a) * e.speed * dt;
+          e.y += Math.sin(a) * e.speed * dt;
+        }
+
+        if (dist < player.r + e.r && player.invuln <= 0) {
+          player.hp -= e.type === 'tank' ? 24 : 14;
+          player.invuln = 0.55;
+          shake = 10;
+          spawnParticles(player.x, player.y, '#fb7185', 14);
+          playSound('hurt');
+        }
+      }
+
+      // Вражеские снаряды
+      for (let i = enemyBullets.length - 1; i >= 0; i--) {
+        const eb = enemyBullets[i];
+        eb.x += eb.vx * dt;
+        eb.y += eb.vy * dt;
+        if (eb.x < -20 || eb.x > W + 20 || eb.y < -20 || eb.y > H + 20) {
+          enemyBullets.splice(i, 1);
+          continue;
+        }
+        if (Math.hypot(eb.x - player.x, eb.y - player.y) < eb.r + player.r && player.invuln <= 0) {
+          player.hp -= 12;
+          player.invuln = 0.45;
+          shake = 8;
+          spawnParticles(player.x, player.y, '#c084fc', 10);
+          playSound('hurt');
+          enemyBullets.splice(i, 1);
+        }
+      }
+
+      // Частицы
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vx *= 0.94;
+        p.vy *= 0.94;
+        p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      updateHUD();
+
+      if (player.hp <= 0) {
+        state = 'GAMEOVER';
+        document.getElementById('final-stats').textContent = `Ты продержался до ${wave}-й волны и набрал ${score} очков.`;
+        document.getElementById('gameover-screen').classList.remove('hidden');
+      }
+    }
+
+    function draw() {
+      ctx.save();
+      if (shake > 0) {
+        ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+      }
+
+      // Фон с тактической сеткой
+      ctx.fillStyle = '#080b12';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.045)';
+      ctx.lineWidth = 1;
+      const grid = 48;
+      for (let x = 0; x < W; x += grid) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += grid) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      // Частицы
+      for (const p of particles) {
+        ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Пули игрока
+      ctx.fillStyle = '#38bdf8';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10;
+      for (const b of bullets) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Вражеские пули
+      ctx.fillStyle = '#e879f9';
+      ctx.shadowColor = '#e879f9';
+      for (const eb of enemyBullets) {
+        ctx.beginPath();
+        ctx.arc(eb.x, eb.y, eb.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+
+      // Враги
+      for (const e of enemies) {
+        ctx.strokeStyle = e.color;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        const sides = e.type === 'tank' ? 6 : e.type === 'shooter' ? 4 : 3;
+        const rot = Math.atan2(player.y - e.y, player.x - e.x);
+        for (let s = 0; s < sides; s++) {
+          const ang = rot + (s * Math.PI * 2) / sides;
+          const px = e.x + Math.cos(ang) * e.r;
+          const py = e.y + Math.sin(ang) * e.r;
+          if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Полоска HP над врагом
+        if (e.hp < e.maxHp) {
+          ctx.fillStyle = 'rgba(255,255,255,0.15)';
+          ctx.fillRect(e.x - 14, e.y - e.r - 10, 28, 4);
+          ctx.fillStyle = e.color;
+          ctx.fillRect(e.x - 14, e.y - e.r - 10, 28 * (e.hp / e.maxHp), 4);
+        }
+      }
+
+      // Игрок
+      if (state !== 'GAMEOVER') {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.rotate(player.angle);
+
+        if (player.invuln > 0) ctx.globalAlpha = 0.55;
+
+        // Ствол
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(6, -4, 18, 8);
+
+        // Корпус
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#34d399';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, player.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
