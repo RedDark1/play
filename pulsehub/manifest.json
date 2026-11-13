@@ -1,85 +1,40 @@
 {
-  "id": "./",
   "name": "PulseHub — Онлайн PWA-платформа",
   "short_name": "PulseHub",
-  "description": "Живая погода, курсы валют и криптовалют, IT-новости и облачный ИИ-ассистент для ПК и смартфонов.",
-  "start_url": "./",
+  "description": "Премиальная онлайн PWA-платформа: живая погода, крипторынки, ИИ-ассистент PulseAI и генератор сборок.",
+  "start_url": "./index.html",
   "scope": "./",
-  "lang": "ru",
-  "dir": "ltr",
   "display": "standalone",
-  "display_override": [
-    "window-controls-overlay",
-    "standalone"
-  ],
-  "theme_color": "#090d16",
-  "background_color": "#090d16",
   "orientation": "any",
+  "background_color": "#04060d",
+  "theme_color": "#050811",
+  "lang": "ru",
   "categories": [
+    "productivity",
     "utilities",
-    "productivity"
+    "finance"
   ],
   "icons": [
     {
       "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
       "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "./screenshot-wide.png",
+      "src": "./screenshot-desktop.png",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Главный экран PulseHub с погодой, курсами валют и ИИ"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Дашборд Онлайн",
-      "short_name": "Дашборд",
-      "description": "Погода, курсы валют и IT-новости",
-      "url": "./",
-      "icons": [
-        {
-          "src": "./icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "ИИ-Ассистент",
-      "short_name": "PulseAI",
-      "description": "Открыть чат с облачным ИИ",
-      "url": "./#ai",
-      "icons": [
-        {
-          "src": "./icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "label": "PulseHub Desktop Dashboard"
     }
   ]
 }
